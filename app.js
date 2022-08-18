@@ -31,12 +31,9 @@ var storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, 'public/uploads');
     },
-    // filename: function (req, file, cb) {
-    //     let originalFileName    =   file.originalname.split(".");
-    //     let newFileName         =   'fid_' + req.body.image_name + '.' + originalFileName[1]
-    //    cb(null, newFileName);
-    // }
+
     filename: function (req, file, cb) {
+        console.log(req.body);
         let newFileName         =   req.body.image_name
        cb(null, newFileName);
     }
@@ -110,18 +107,33 @@ app.post('/api/uploadFile', upload.single('image'), async (req, res) => {
     res.send(apiResponse({message: 'File uploaded successfully.', image}));
 
 });
-  
-  function apiResponse(results){
-    return JSON.stringify({"status": 200, "error": null, "response": results});
-}
 
+app.post('/api/uploadFileBg', upload.single('image'), async (req, res) => {
+
+    const obj = JSON.parse(JSON.stringify(req.body));
+
+    const image = req.image
+
+    res.send(apiResponse({message: 'File uploaded successfully.', image}));
+
+});
+
+app.post('/api/uploadFileBtn', upload.single('image'), async (req, res) => {
+
+    const obj = JSON.parse(JSON.stringify(req.body));
+
+    const image = req.image
+
+    res.send(apiResponse({message: 'File uploaded successfully.', image}));
+
+});
+  
 
 app.post('/api/createFestival', async (req,res)=> {  
 
     let data = {
         "name"          : req.body.name,
-        "file_type"     : req.body.file_type,
-        "file_size"     : req.body.file_size,
+        "color"         : req.body.color,
         "start_date"    : req.body.start_date,
         "end_date"      : req.body.end_date,
         "status"        : req.body.status,
@@ -136,6 +148,8 @@ app.post('/api/createFestival', async (req,res)=> {
 
     let arr_file_bg     = req.body.file_bg_name.split(".")
 
+    let arr_file_btn     = req.body.file_btn_name.split(".")
+
     let sql = "INSERT INTO list_festival SET ?"
 
     db.query(sql,data,(error,results,fields)=>{
@@ -149,14 +163,16 @@ app.post('/api/createFestival', async (req,res)=> {
         data = [{'id':results.insertId, ...data}]
 
         // insert ชื่อไฟล์
-
         let filenameImg = 'imgfid_' + results.insertId + '.' +arr_file_img[1] 
 
         let filenameBg = 'bgfid_' + results.insertId + '.' +arr_file_bg[1] 
+
+        let filenameBtn = 'btnfid_' + results.insertId + '.' +arr_file_btn[1] 
   
         let data_img = {
             "file_name"     : filenameImg,
             "file_bg_name"  : filenameBg,
+            "file_btn_name" : filenameBtn,
         }
         
         sql = "UPDATE list_festival SET ? WHERE id = " +results.insertId
@@ -166,7 +182,6 @@ app.post('/api/createFestival', async (req,res)=> {
         })
 
         // update สถานะการใช้งาน
-        
         if(req.body.status == 1){
             
             sql = "UPDATE list_festival SET status = 0  WHERE id != "+results.insertId
@@ -177,17 +192,13 @@ app.post('/api/createFestival', async (req,res)=> {
 
         }
 
-       
         const result = {
             "status"    :  200,
             "row_id"    :  results.insertId,
-            "file_img"  :   data_img.file_name,
+            "file_img"  :  data_img.file_name,
             "file_bg"  :   data_img.file_bg_name,
-            // "data"   :  results.data
+            "file_btn"  :  data_img.file_btn_name,
         }
-
-        console.log(result);
-
 
         return res.json(result)
 
@@ -199,8 +210,9 @@ app.post('/api/updateFestival', async (req,res)=> {
     let item = {
         "name"          : req.body.name,
         "file_name"     : req.body.file_name,
-        "file_type"     : req.body.file_type,
-        "file_size"     : req.body.file_size,
+        "file_bg_name"  : req.body.file_bg_name,
+        "file_btn_name" : req.body.file_btn_name,
+        "color"         : req.body.color,
         "start_date"    : req.body.start_date,
         "end_date"      : req.body.end_date,
         "status"         : req.body.status,
@@ -238,7 +250,6 @@ app.post('/api/updateFestival', async (req,res)=> {
    
 
 });
-
 
 app.post('/api/updateFestivalStatus', async (req,res)=> { 
 
@@ -340,6 +351,8 @@ app.get('/api/getFestivalSign', (req,res)=> {
 
     db.query(sql, function (err, results, fields) {
 
+        // console.log(err);
+
         if (err) return res.status(500).json({
             "status": 500,
             "message": "Internal Server Error" // error.sqlMessage
@@ -359,37 +372,47 @@ app.get('/api/getFestivalSign', (req,res)=> {
 app.post('/api/createFestivalSign', async (req,res)=> {  
 
     let item = {
+        "id_festival"   : req.body.id_festival,
         "name"          : req.body.name,
-        "lastname"      : req.body.file_name,
-        "regis_date"    : req.body.file_type,
-        "browser"       : req.body.file_size,
-        "device"        : req.body.start_date,
+        "lastname"      : req.body.lastname,
+        "regis_date"    : req.body.regis_date,
+        "browser"       : req.body.browser,
+        "device"        : req.body.device,
+        "ip_user"       : req.headers['x-forwarded-for'],
     }
 
     let sql = "INSERT INTO sign_festival SET ?"
 
     db.query(sql,item,(error,results,fields)=>{
 
-        console.log(error);
         if (error) return res.status(500).json({
             "status": 500,
             "message": "Internal Server Error" // error.sqlMessage
         })
 
-        data = [{'id':results.insertId, ...data}]
+        datas = [{'id':results.insertId,...item}]
 
-        // "data": user.id
+        sql = "SELECT COUNT(*) as sign_count FROM sign_festival WHERE id_festival = " +req.body.id_festival
 
-        const result = {
-            "status" :  200,
-            "data"  : data.id
-            // "data"   :  results.data
-        }
+        db.query(sql, (err,rows,fields) => {
 
+            if(err) throw err;
 
-        return res.json(result)
+            const result = {
+                "status"    :  200,
+                "data"      : datas,
+                "counter"   : rows[0].sign_count
+            }
+
+            return res.json(result)
+        })
+
+      
+
 
     })
+
+
 });
 
 
@@ -549,10 +572,13 @@ app.get('/api/getUserDetail/:id', (req,res)=> {
 
 });
 
-
 app.post('/api/welcome', auth, (req, res) => {
     res.status(200).send('Hello');
 })
+
+function apiResponse(results){
+    return JSON.stringify({"status": 200, "error": null, "response": results});
+}
 
 
 
