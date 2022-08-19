@@ -344,6 +344,33 @@ app.get('/api/getFestival', (req,res)=> {
 
 });
 
+app.get('/api/checkFestival', (req,res)=> { 
+
+    const sql = 'SELECT id, start_date, end_date FROM list_festival WHERE status = 1 ';
+
+    db.query(sql, function (err, results, fields) {
+
+
+        console.log(err);
+
+        if (err) return res.status(500).json({
+            "status": 500,
+            "message": "Internal Server Error" // error.sqlMessage
+        })
+
+        const result = {
+            "status": 200,
+            "data"  : results, 
+        }
+
+          return res.json(result)
+
+      });
+
+});
+
+
+
 app.get('/api/getFestivalSign', (req,res)=> { 
 
     const sql = 'SELECT * FROM list_festival WHERE status = 1 ';
@@ -421,18 +448,19 @@ app.post('/api/createUser', async (req,res)=> {
     const hashedPassword = await bcrypt.hash(req.body.password, 10)
 
     let user = {
-        "username"  : req.body.username,
-        "password"  : hashedPassword,
-        "name"      : req.body.name,
-        "lastname"  : req.body.lastname,
-        "position"  : req.body.position,
-        "divisions" : req.body.divisions,
-        "roles"     : req.body.roles,
-        "detail"    : req.body.detail,
-        "state"     : req.body.state,
-        "create_by" : req.body.userId,
-        "create_date" : date,
-        "modified_by" : req.body.userId,
+        "username"      : req.body.username,
+        "password"      : hashedPassword,
+        "name"          : req.body.name,
+        "lastname"      : req.body.lastname,
+        "position"      : req.body.position,
+        "divisions"     : req.body.divisions,
+        "roles"         : req.body.roles,
+        "detail"        : req.body.detail,
+        "status"        : req.body.status,
+        "state"         : 1,
+        "create_by"     : req.body.userId,
+        "create_date"   : date,
+        "modified_by"   : req.body.userId,
         "modified_date" : date
     }
 
@@ -473,6 +501,7 @@ app.post('/api/updateUser', async (req,res)=> {
         "divisions"     : req.body.divisions,
         "roles"         : req.body.roles,
         "detail"        : req.body.detail,
+        "status"        : req.body.status,
         "state"         : req.body.state,
         "modified_by"   : req.body.userId,
         "modified_date" : date
@@ -500,8 +529,9 @@ app.post('/api/updateUser', async (req,res)=> {
 app.post('/api/deleteUser', (req, res)=>{
 
     let user = {
-        "state"     : '0',
-        "modified_by" : req.body.userId,
+        "state"         : '-2',
+        "status"        :  '0',
+        "modified_by"   : req.body.userId,
         "modified_date" : date
     }
 
@@ -527,7 +557,7 @@ app.post('/api/deleteUser', (req, res)=>{
 
 app.get('/api/getUser', (req,res)=> { 
 
-    const sql = 'SELECT id, username, name, lastname, position, divisions, roles, detail, state, create_by, create_date, modified_by, modified_date FROM user_festival ';
+    const sql = 'SELECT id, username, name, lastname, position, divisions, roles, detail, status, state, create_by, create_date, modified_by, modified_date FROM user_festival ';
 
     db.query(sql, async function (err, results, fields) {
 
@@ -552,7 +582,7 @@ app.get('/api/getUserDetail/:id', (req,res)=> {
 
     const  id  = req.params.id;
 
-    const sql = 'SELECT id, username, name, lastname, position, divisions, roles, detail, state, create_by, create_date, modified_by, modified_date FROM user_festival WHERE id = ?';
+    const sql = 'SELECT id, username, name, lastname, position, divisions, roles, detail, status, state, create_by, create_date, modified_by, modified_date FROM user_festival WHERE id = ?';
 
     db.query(sql, id, function (err, results, fields) {
 
