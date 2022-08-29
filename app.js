@@ -10,6 +10,9 @@ const auth          = require('./middleware/auth');
 const fs            = require('fs');
 const multer        = require('multer');
 
+// var ldap            = require('ldapjs');
+// var server          = ldap.createServer();
+
 const app           = express()
 
 require("dotenv").config();
@@ -129,6 +132,7 @@ app.post('/api/uploadFileBtn', upload.single('image'), async (req, res) => {
 });
   
 
+// list festival //
 app.post('/api/createFestival', async (req,res)=> {  
 
     let data = {
@@ -369,8 +373,6 @@ app.get('/api/checkFestival', (req,res)=> {
 
 });
 
-
-
 app.get('/api/getFestivalSign', (req,res)=> { 
 
     const sql = 'SELECT * FROM list_festival WHERE status = 1 ';
@@ -396,6 +398,58 @@ app.get('/api/getFestivalSign', (req,res)=> {
 
 });
 
+app.get('/api/getFestivalDetail/:id', (req,res)=> { 
+
+    const  id  = req.params.id;
+
+    const sql = 'SELECT * FROM list_festival WHERE id = ?';
+
+    db.query(sql, id, function (err, results, fields) {
+
+          if (err) return res.status(500).json({
+              "status": 500,
+              "message": "Internal Server Error" // error.sqlMessage
+          })
+
+          const result = {
+              "status": 200,
+              "data": results
+          }
+
+          return res.json(result)
+
+      });
+
+});
+
+app.get('/api/getReportFestival', (req,res)=> { 
+
+    // const sql = 'SELECT id, name FROM list_festival WHERE state = 1 ';
+
+    const sql = "SELECT a.id, a.name, COUNT(b.id_festival) totalCount FROM list_festival AS a JOIN sign_festival as b ON a.id = b.id_festival WHERE state = 1 GROUP BY a.id";
+
+    db.query(sql, function (err, results, fields) {
+
+        if (err) return res.status(500).json({
+            "status": 500,
+            "message": "Internal Server Error" // error.sqlMessage
+        })
+
+      
+
+        const result = {
+            "status": 200,
+            "data"  : results, 
+        }
+
+          return res.json(result)
+
+      });
+
+});
+
+
+// festival
 app.post('/api/createFestivalSign', async (req,res)=> {  
 
     let item = {
@@ -442,7 +496,33 @@ app.post('/api/createFestivalSign', async (req,res)=> {
 
 });
 
+app.get('/api/export_ffuagvylst/:id', async (req,res)=> { 
 
+    const sql = "SELECT * FROM sign_festival WHERE id_festival = " +req.params.id
+
+    db.query(sql, (error,results,fields)=>{
+
+        
+        if (error) return res.status(500).json({
+            "status": 500,
+            "message": "Internal Server Error" // error.sqlMessage
+        })
+
+        const result = {
+            "status": 200,
+            "data": results
+        }
+     
+        return res.json(result)
+    })
+
+});
+
+
+
+
+
+// user //
 app.post('/api/createUser', async (req,res)=> { 
 
     const hashedPassword = await bcrypt.hash(req.body.password, 10)
