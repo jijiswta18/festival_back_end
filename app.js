@@ -12,17 +12,7 @@ const multer        = require('multer');
 
 const app           = express()
 
-
-
-var ldap = require('ldapjs');
-
-const parseFilter = require('ldapjs').parseFilter;
-
-var client = ldap.createClient({
-    url: 'ldap://10.10.1.34:389'
-});
-
-require("dotenv").config();
+var ldap            = require('ldapjs');
 
 app.use(express.static('public'));
 
@@ -35,6 +25,23 @@ app.use(cors({
     origin: '*'
 
 }));
+
+
+// Create LDAP client connection 
+const adConfiguration = {
+    url: "ldap://" + process.env.ad_URL,
+    reconnect: true,
+    // tlsOptions: {
+    //   rejectUnauthorized: true,
+    // }
+  }
+
+  const client = ldap.createClient(adConfiguration)
+
+  
+  client.on('error', (err) => {
+    console.log('=>>>>>>>>>>>>',err.message) // this will be your ECONNRESET message
+  })
 
 
 
@@ -55,90 +62,103 @@ moment.locale('th');
 let date = moment().format('YYYY-MM-DD HH:mm:ss');
 
 
+app.get('/api/',(req,res)=>{
+    res.send('Hello World!');
+});
 
 
-
-app.post('/api/login',  async (req, res) => {
+app.post('/api/login', async (req, res) =>{
 
     try {
-        
-        const { username, password } = req.body;
+
+        const username = req.body.username
+        const password = req.body.password
     
-        if (!(username)) {
-            res.status(400).send("All input is required")
-        }
-  
-        const sql = 'SELECT * FROM user_festival WHERE username_ad = ?'; 
-  
-        db.query(sql, [username], async function (error, result, fields) {
-
+        const hashedPassword = await bcrypt.hash(password, 10)
+    
+        const sql = 'SELECT * FROM user_festival WHERE username = ?'; 
+    
+        db.query(sql, username, function (err, result, fields) {
+    
+            let user = null
+    
+    
             if(result.length > 0){
+
                 user = result[0]
+
             }else{
+                
                 res.status(400).send("error : no user in the system");
-                return
+
             }
+    
+            // console.log('lllllllll',user.username);
+    
+            if(user){
+    
+                const username_ad = 'ad\\'+ user.username
 
-            if(user && user.username_ad){
+                console.log(username_ad);
+                console.log(password);
 
-                const username_ad = 'ad\\'+ user.username_ad
-        
-                client.bind(username_ad, password, async function (err) {
+                client.bind(username_ad, password, err => {
 
+                    
                     if (err) {
 
-                        var results = false
-
-                        res.status(400).send("error password");
-                        return
+                        res.status(400).send("error : password error");
             
                     } else {
                         /*if connection is success then go for any operation*/
                         console.log("Success");
+                        // client.destroy();
 
-                        var results = true
-                    }
-
-                    if(results){
+                        // results = true
 
                         const newToken = jwt.sign(
-                            { username : user.username_ad },
-                            process.env.JWT_KEY,
+                            { username : user.username },
+                                process.env.JWT_KEY,
                             {
-                                expiresIn: "1h"
+                                expiresIn: "2h"
                             }
                         )
+                                    
+                        let updateData = {
+                            "token"     : newToken,
+                            "password"  : hashedPassword,
+                        }
 
-                        const sql = 'UPDATE user_festival SET token = ? WHERE username_ad = ?'; 
+
+                        const sql = 'UPDATE user_festival SET ? WHERE username = ?'; 
             
-                        db.query(sql, [newToken, username], function (err, result2, fields) {
+                        db.query(sql, [updateData, username], function (err, result2, fields) {
                 
+                            // console.log(res.json({userdata: user, token:newToken}));
+
                             return res.json({userdata: user, token:newToken})
-                        
+                            
                         });
                     }
-                
-                })
-                client.on('error', (err) => {
-                    console.log(err.message)
-                 });
 
-            }else{
-                console.log("ไม่พบรหัสผู้ใช้งาน")
+                })
+
             }
 
+          
+    
         });
-  
+        
     } catch (error) {
-      console.log(error); 
-    }  
-});
+        console.log(error);
+    }
+   
 
 
 
-app.get('/api/',(req,res)=>{
-    res.send('Hello World!');
-});
+  
+})
+
 
 // app.post('/api/login',  async (req, res) => {
 
@@ -626,7 +646,7 @@ app.post('/api/createFestivalSign', async (req,res)=> {
     
             db.query(sql, (err,rows,fields) => {
     
-                if(err) throw err;
+                // if(err) throw err;
     
                 const result = {
                     "status"    :  200,
@@ -840,15 +860,17 @@ app.get('/api/getUser', (req,res)=> {
 });
 
 
-app.get('/api/getUserDetail/:id', (req,res)=> { 
+app.post('/api/getUserDetail/:id', (req,res)=> { 
 
     try {
 
         const  id  = req.params.id;
 
-        const sql = 'SELECT id, username_ad, username, name, lastname, position, divisions, roles, detail, status, state, create_by, create_date, modified_by, modified_date FROM user_festival WHERE id = ?';
+        const sql = 'SELECT id, username, name, lastname, position, divisions, roles, detail, status, state, create_by, create_date, modified_by, modified_date FROM user_festival WHERE id = ?';
 
         db.query(sql, id, function (err, results, fields) {
+
+            console.log(err);
 
             if (err) return res.status(500).json({
                 "status": 500,
@@ -865,7 +887,7 @@ app.get('/api/getUserDetail/:id', (req,res)=> {
         });
         
     } catch (error) {
-        
+       console.log(error); 
     }
 
 });
@@ -877,10 +899,6 @@ app.post('/api/welcome', auth, (req, res) => {
 function apiResponse(results){
     return JSON.stringify({"status": 200, "error": null, "response": results});
 }
-
-
-
-
 
 
 
