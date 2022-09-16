@@ -1,25 +1,30 @@
 
 const express       = require('express');
+const cors          = require('cors');
+const auth          = require('./middleware/auth');
+const multer        = require('multer');
+const moment        = require('moment');
+
+const app           = express();
 const db            = require('./config/db');
 const bodyParser    = require('body-parser');
-const moment        = require('moment');
-const cors          = require('cors');
 const bcrypt        = require('bcrypt');
 const jwt           = require('jsonwebtoken');
-const auth          = require('./middleware/auth');
+const ldap          = require('ldapjs');
 const fs            = require('fs');
-const multer        = require('multer');
 
-const app           = express()
 
-var ldap            = require('ldapjs');
+// ใช้งาน router module
+const userApi       = require('./api/users')
+const reportApi     = require('./api/reports')
+const festivalApi   = require('./api/festivals')
+
+// เรียกใช้งาน indexRouter
+app.use('/api', [festivalApi, userApi, reportApi]) 
 
 app.use(express.static('public'));
-
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
-
-
 app.use(cors({
         //"Access-Control-Allow-Origin": "https://forqueen.cgd.go.th",
     origin: '*'
@@ -31,18 +36,11 @@ app.use(cors({
 const adConfiguration = {
     url: "ldap://" + process.env.ad_URL,
     reconnect: true,
-    // tlsOptions: {
-    //   rejectUnauthorized: true,
-    // }
   }
-
-  const client = ldap.createClient(adConfiguration)
-
-  
-  client.on('error', (err) => {
-    console.log('=>>>>>>>>>>>>',err.message) // this will be your ECONNRESET message
-  })
-
+const client = ldap.createClient(adConfiguration)
+client.on('error', () => {
+    // this will be your ECONNRESET message
+})
 
 
 var storage = multer.diskStorage({
@@ -54,7 +52,7 @@ var storage = multer.diskStorage({
         let newFileName         =   req.body.image_name
        cb(null, newFileName);
     }
- });
+});
 
 var upload = multer({ storage: storage });
 
@@ -66,10 +64,9 @@ app.get('/api/',(req,res)=>{
     res.send('Hello World!');
 });
 
-
 app.post('/api/login', async (req, res) =>{
 
-    try {
+    try {   
 
         const username = req.body.username
         const password = req.body.password
@@ -95,7 +92,7 @@ app.post('/api/login', async (req, res) =>{
     
             // console.log('lllllllll',user.username);
     
-            if(user){
+            if(user && user.status === 1){
     
                 const username_ad = 'ad\\'+ user.username
 
@@ -123,6 +120,10 @@ app.post('/api/login', async (req, res) =>{
                                 expiresIn: "2h"
                             }
                         )
+
+                        
+
+
                                     
                         let updateData = {
                             "token"     : newToken,
@@ -143,6 +144,8 @@ app.post('/api/login', async (req, res) =>{
 
                 })
 
+            }else{
+                res.status(400).send("error : no user in the system");
             }
 
           
@@ -245,7 +248,7 @@ app.post('/api/uploadFileBtn', upload.single('image'), async (req, res) => {
   
 
 // list festival //
-app.post('/api/createFestival', async (req,res)=> {  
+app.post('/api/createFestival', auth, async (req,res)=> {  
     
     try {
 
@@ -261,6 +264,7 @@ app.post('/api/createFestival', async (req,res)=> {
             "modified_by"   : req.body.user_id,
             "modified_date" : date
         }
+
     
         let arr_file_img    = req.body.file_name.split(".")
     
@@ -271,6 +275,8 @@ app.post('/api/createFestival', async (req,res)=> {
         let sql = "INSERT INTO list_festival SET ?"
     
         db.query(sql,data,(error,results,fields)=>{
+
+
             if (error) return res.status(500).json({
                 "status": 500,
                 "message": "Internal Server Error" // error.sqlMessage
@@ -327,7 +333,7 @@ app.post('/api/createFestival', async (req,res)=> {
 
 });
 
-app.post('/api/updateFestival', async (req,res)=> { 
+app.post('/api/updateFestival', auth, async (req,res)=> { 
 
     try {
 
@@ -377,7 +383,7 @@ app.post('/api/updateFestival', async (req,res)=> {
 
 });
 
-app.post('/api/updateFestivalStatus', async (req,res)=> { 
+app.post('/api/updateFestivalStatus', auth, async (req,res)=> { 
 
     try {
         let item = {
@@ -422,7 +428,7 @@ app.post('/api/updateFestivalStatus', async (req,res)=> {
 
 });
 
-app.post('/api/deleteFestival', (req, res)=>{
+app.post('/api/deleteFestival', auth, (req, res)=>{
 
     try {
 
@@ -457,35 +463,7 @@ app.post('/api/deleteFestival', (req, res)=>{
 
 });
 
-app.get('/api/getFestival', (req,res)=> { 
-
-    try {
-
-        const sql = 'SELECT * FROM list_festival WHERE state = 1 ';
-
-        db.query(sql, function (err, results, fields) {
-    
-            if (err) return res.status(500).json({
-                "status": 500,
-                "message": "Internal Server Error" // error.sqlMessage
-            })
-    
-            const result = {
-                "status": 200,
-                "data"  : results, 
-            }
-    
-              return res.json(result)
-    
-          });
-          
-    } catch (error) {
-        console.log(error);
-    }
-
-});
-
-app.get('/api/checkFestival', (req,res)=> { 
+app.get('/api/checkFestival', auth, (req,res)=> { 
 
     try {
 
@@ -518,106 +496,10 @@ app.get('/api/checkFestival', (req,res)=> {
 
 });
 
-app.get('/api/getFestivalSign', (req,res)=> { 
-
-    try {
-
-        const sql = 'SELECT * FROM list_festival WHERE status = 1 ';
-
-        db.query(sql, function (err, results, fields) {
-    
-        if (err) return res.status(500).json({
-            "status": 500,
-            "message": "Internal Server Error" // error.sqlMessage
-        })
-
-        const result = {
-            "status": 200,
-            "data"  : results, 
-        }
-
-            return res.json(result)
-
-        });
-
-        
-    } catch (error) {
-
-        console.log(error);
-        
-    }
-
-});
-
-app.get('/api/getFestivalDetail/:id', (req,res)=> { 
-
-    try {
-
-        const  id  = req.params.id;
-
-        const sql = 'SELECT * FROM list_festival WHERE id = ?';
-
-        db.query(sql, id, function (err, results, fields) {
-
-            if (err) return res.status(500).json({
-                "status": 500,
-                "message": "Internal Server Error" // error.sqlMessage
-            })
-
-            const result = {
-                "status": 200,
-                "data": results
-            }
-
-            return res.json(result)
-
-        });
-
-    } catch (error) {
-
-        console.log(error);
-        
-    }
-
-});
-
-app.get('/api/getReportFestival', (req,res)=> { 
-
-    try {
-
-        // const sql = 'SELECT id, name FROM list_festival WHERE state = 1 ';
-
-        const sql = "SELECT a.id, a.name, COUNT(b.id_festival) totalCount FROM list_festival AS a JOIN sign_festival as b ON a.id = b.id_festival WHERE state = 1 GROUP BY a.id";
-
-        db.query(sql, function (err, results, fields) {
-
-            if (err) return res.status(500).json({
-                "status": 500,
-                "message": "Internal Server Error" // error.sqlMessage
-            })
-
-        
-
-            const result = {
-                "status": 200,
-                "data"  : results, 
-            }
-
-            return res.json(result)
-
-        });
-        
-    } catch (error) {
-
-        console.log(error);
-        
-    }
-
-});
 
 
 // festival
-app.post('/api/createFestivalSign', async (req,res)=> {  
+app.post('/api/createFestivalSign', auth, async (req,res)=> {  
 
     try {
 
@@ -665,42 +547,8 @@ app.post('/api/createFestivalSign', async (req,res)=> {
 
 });
 
-app.get('/api/export_ffuagvylst/:id', async (req,res)=> { 
-
-    try {
-        
-        const sql = "SELECT * FROM sign_festival WHERE id_festival = " +req.params.id
-
-        db.query(sql, (error,results,fields)=>{
-
-            
-            if (error) return res.status(500).json({
-                "status": 500,
-                "message": "Internal Server Error" // error.sqlMessage
-            })
-
-            const result = {
-                "status": 200,
-                "data": results
-            }
-        
-            return res.json(result)
-        })
-
-    } catch (error) {
-
-        console.log(error);
-        
-    }
-
-});
-
-
-
-
-
-// user //
-app.post('/api/createUser', async (req,res)=> { 
+// // user //
+app.post('/api/createUser', auth, async (req,res)=> { 
 
     try {
 
@@ -757,7 +605,7 @@ app.post('/api/createUser', async (req,res)=> {
 
 });
 
-app.post('/api/updateUser', async (req,res)=> { 
+app.post('/api/updateUser', auth, async (req,res)=> { 
 
     try {
 
@@ -797,12 +645,12 @@ app.post('/api/updateUser', async (req,res)=> {
 
 });
 
-app.post('/api/deleteUser', (req, res)=>{
+app.post('/api/deleteUser', auth, (req, res)=>{
 
     try {
         let user = {
-            "state"         : '-2',
-            "status"        :  '0',
+            "state"         : req.body.state,
+            "status"        : req.body.status,
             "modified_by"   : req.body.userId,
             "modified_date" : date
         }
@@ -831,36 +679,7 @@ app.post('/api/deleteUser', (req, res)=>{
 
 })
 
-app.get('/api/getUser', (req,res)=> { 
-
-    try {
-
-        const sql = 'SELECT id, username, name, lastname, position, divisions, roles, detail, status, state, create_by, create_date, modified_by, modified_date FROM user_festival ';
-
-        db.query(sql, async function (err, results, fields) {
-
-            if (err) return res.status(500).json({
-                "status": 500,
-                "message": "Internal Server Error" // error.sqlMessage
-            })
-
-            const result = {
-                "status": 200,
-                "data"  : results, 
-            }
-
-            return res.json(result)
-
-        });
-        
-    } catch (error) {
-        console.log(error);
-    }
-
-});
-
-
-app.post('/api/getUserDetail/:id', (req,res)=> { 
+app.post('/api/getUserDetail/:id', auth, (req,res)=> { 
 
     try {
 
@@ -893,15 +712,13 @@ app.post('/api/getUserDetail/:id', (req,res)=> {
 });
 
 app.post('/api/welcome', auth, (req, res) => {
-    res.status(200).send('Hello');
+    // res.status(200).send('Hello');
+    res.send('Hello');
 })
 
 function apiResponse(results){
     return JSON.stringify({"status": 200, "error": null, "response": results});
 }
-
-
-
 
 app.listen(5000,()=>{
     console.log('Server is listening on port 5000...')
