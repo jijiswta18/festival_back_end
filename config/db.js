@@ -2,12 +2,23 @@ require("dotenv").config();
 const mysql = require('mysql') // เรียกใช้งาน MySQL module
  
 // กำหนดการเชื่อมต่อฐานข้อมูล
+// const db = mysql.createPool({
+//     connectionLimit : 10,
+//     host      : 'localhost',
+//     port      :'3306',
+//     user      : 'root',
+//     password  : '',
+//     database  : 'cgd_festival', 
+//     ssl       : true,
+//     debug     : false
+//   })
+
 const db = mysql.createPool({
     connectionLimit : 10,
-    host      : 'localhost',
-    port      :'3306',
-    user      : 'root',
-    password  : '',
+    host      : process.env.HOST,
+    port      : process.env.PORT,
+    user      : process.env.USER,
+    password  : process.env.PASSWORD,
     database  : 'cgd_festival', 
     ssl       : true,
     debug     : false
