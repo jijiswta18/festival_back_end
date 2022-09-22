@@ -14,6 +14,7 @@ const ldap          = require('ldapjs');
 const fs            = require('fs');
 
 
+
 // ใช้งาน router module
 const userApi       = require('./api/users')
 const reportApi     = require('./api/reports')
@@ -433,7 +434,8 @@ app.post('/api/deleteFestival', auth, (req, res)=>{
     try {
 
         let data = {
-            "state"     : '-2',
+            "status"     : req.body.status,
+            "state"     : req.body.state,
             "modified_by" : req.body.user_id,
             "modified_date" : date
         }
