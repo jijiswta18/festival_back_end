@@ -15,7 +15,7 @@ router.route('/getUser')
     .get(auth, (req, res, next) => { 
 
         // แสดงข้อมูลทั้งหมด
-        const sql = 'SELECT id, username, name, lastname, position, divisions, roles, detail, status, state, create_by, create_date, modified_by, modified_date FROM user_festival WHERE state = 1 ';
+        const sql = 'SELECT id, username, name, lastname, position, divisions, roles, detail, status, state, create_by, create_date, modified_by, modified_date FROM user_festival ';
        
         db.query(sql, async function (err, results, fields) {
 

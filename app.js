@@ -4,7 +4,7 @@ const cors          = require('cors');
 const auth          = require('./middleware/auth');
 const multer        = require('multer');
 const moment        = require('moment');
-
+const fetch         = require('node-fetch');
 const app           = express();
 const db            = require('./config/db');
 const bodyParser    = require('body-parser');
@@ -12,18 +12,21 @@ const bcrypt        = require('bcrypt');
 const jwt           = require('jsonwebtoken');
 const ldap          = require('ldapjs');
 const fs            = require('fs');
-
+const request       = require('request');
 
 
 // ใช้งาน router module
-const userApi       = require('./api/users')
-const reportApi     = require('./api/reports')
-const festivalApi   = require('./api/festivals')
+const userApi       = require('./api/users');
+const reportApi     = require('./api/reports');
+const festivalApi   = require('./api/festivals');
+// const { request }   = require('http');
 
 // เรียกใช้งาน indexRouter
-app.use('/api', [festivalApi, userApi, reportApi]) 
+app.use('/api', [festivalApi, userApi, reportApi]);
 
 app.use(express.static('public'));
+// app.use("/public", express.static(path.join(__dirname, 'public')));
+
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cors({
@@ -217,33 +220,73 @@ app.post('/api/login', async (req, res) =>{
 //     }  
 // });
 
-app.post('/api/uploadFile', upload.single('image'), async (req, res) => {
+// app.post('/api/uploadImage', upload.single('upload'), (req, res) => {
 
-    const obj = JSON.parse(JSON.stringify(req.body));
+//     if (!req.file) {
+//         console.log("No file upload");
+//     } else {
+     
+//         let img = Buffer.from(JSON.parse(input));
 
-    const image = req.image
+//         var imgsrc = req.file.buffer
+//         // var imgsrc =  req.file;
+//         // console.log(req.file)
+//         // var insertData = "update INTO list_festival"
+//         let insertData = "UPDATE list_festival SET image = ? WHERE id = 1"
+//         db.query(insertData, [imgsrc], (err, result) => {
+    
+//             if (err) throw err
+//             console.log("file uploaded")
+//         })
+//     }
+//     res.sendStatus(200);
+// });
 
-    res.send(apiResponse({message: 'File uploaded successfully.', image}));
+app.get('/api/getImageFestival', async (req,res)=> { 
+
+    try {
+
+        const url = "http://"+req.get('host')+"/uploads/"+req.query.filename;
+
+        request({
+            url: url,
+            encoding: null
+        },
+        (err, resp, buffer) => {
+            if(err){
+
+                console.log('=>>>>>>>>>>',err);
+            }
+            res.set("Content-Type", "image/jpeg");
+            res.send(resp.body)
+        });
+            
+    } catch (error) {
+
+        console.log(error);
+        
+    }
 
 });
 
-app.post('/api/uploadFileBg', upload.single('image'), async (req, res) => {
 
-    const obj = JSON.parse(JSON.stringify(req.body));
+app.post('/api/uploadFile', upload.single('images'), async (req, res) => {
 
-    const image = req.image
-
-    res.send(apiResponse({message: 'File uploaded successfully.', image}));
+    res.send(apiResponse({message: 'File uploaded successfully.'}));
 
 });
 
-app.post('/api/uploadFileBtn', upload.single('image'), async (req, res) => {
+app.post('/api/uploadFileBg', upload.single('images'), async (req, res) => {
 
-    const obj = JSON.parse(JSON.stringify(req.body));
 
-    const image = req.image
+    res.send(apiResponse({message: 'File uploaded successfully.'}));
 
-    res.send(apiResponse({message: 'File uploaded successfully.', image}));
+});
+
+app.post('/api/uploadFileBtn', upload.single('images'), async (req, res) => {
+
+
+    res.send(apiResponse({message: 'File uploaded successfully.'}));
 
 });
   
@@ -253,7 +296,7 @@ app.post('/api/createFestival', auth, async (req,res)=> {
     
     try {
 
-        let data = {
+        let data = await {
             "name"          : req.body.name,
             "color"         : req.body.color,
             "start_date"    : req.body.start_date,
@@ -267,15 +310,15 @@ app.post('/api/createFestival', auth, async (req,res)=> {
         }
 
     
-        let arr_file_img    = req.body.file_name.split(".")
+        let arr_file_img    = await req.body.file_name.split(".")
     
-        let arr_file_bg     = req.body.file_bg_name.split(".")
+        let arr_file_bg     = await req.body.file_bg_name.split(".")
     
-        let arr_file_btn     = req.body.file_btn_name.split(".")
+        let arr_file_btn     = await req.body.file_btn_name.split(".")
     
-        let sql = "INSERT INTO list_festival SET ?"
+        let sql = await "INSERT INTO list_festival SET ?"
     
-        db.query(sql,data,(error,results,fields)=>{
+        await db.query(sql,data,(error,results,fields)=>{
 
 
             if (error) return res.status(500).json({

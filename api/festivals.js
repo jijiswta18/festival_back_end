@@ -15,7 +15,7 @@ router.route('/getFestival')
     .get(auth, (req, res, next) => { 
 
         // แสดงข้อมูลทั้งหมด
-        const sql = 'SELECT * FROM list_festival WHERE state = 1 '
+        const sql = 'SELECT * FROM list_festival ';
 
         db.query(sql, function (err, results, fields) {
     
