@@ -25,6 +25,7 @@
     "node-fetch": "2.0",
     "nodemon": "^2.0.18",
     "passport-ldapauth": "^3.0.1",
+    "path": "^0.12.7",
     "request": "^2.88.2"
   }
 }

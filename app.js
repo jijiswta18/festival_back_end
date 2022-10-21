@@ -13,6 +13,8 @@ const jwt           = require('jsonwebtoken');
 const ldap          = require('ldapjs');
 const fs            = require('fs');
 const request       = require('request');
+const path          = require('path');
+
 
 
 // ใช้งาน router module
@@ -242,24 +244,95 @@ app.post('/api/login', async (req, res) =>{
 //     res.sendStatus(200);
 // });
 
+// app.get('/api/getImageFestival', async (req,res)=> { 
+
+//     try {
+
+//         // const url = "http://"+req.get('host')+"/uploads/imgfid_1.png";
+//         const url = "http://"+req.get('host')+"/uploads/"+req.query.filename;
+
+//         request({
+//             url: url,
+//             encoding: null
+//         },
+//         (err, resp, buffer) => {
+//             if(err){
+
+//                 console.log('=>>>>>>>>>>',err);
+//             }
+//             res.set("Content-Type", "image/jpeg");
+//             res.send(resp.body)
+//         });
+            
+//     } catch (error) {
+
+//         console.log(error);
+        
+//     }
+
+// });
+
+// app.get('/api/getImageFestival', async (req,res)=> { 
+
+//     try {
+
+//         const fullUrl = `${req.protocol}://${req.hostname}:5000`;
+//         // console.log(req.headers.host)
+
+//         // const url = "http://"+req.get('host')+"/uploads/imgfid_1.png";
+//         const url =  fullUrl+"/uploads/"+req.query.filename;
+//         request({
+//             url: url,
+//             encoding: null
+//         }, 
+//         (err, resp, buffer) => {
+//             console.log('==============')
+//             if(err){
+
+//                 console.log('=>>>>>>>>>>',err);
+//             }
+//             res.set("Content-Type", "image/jpeg");
+//             res.send(resp.body)
+//         });
+            
+//     } catch (error) {
+
+//         console.log(error);
+        
+//     }
+
+// });
+
 app.get('/api/getImageFestival', async (req,res)=> { 
+
+    
 
     try {
 
-        const url = "http://"+req.get('host')+"/uploads/"+req.query.filename;
+        const fullUrl = await `${req.protocol}://${req.hostname}:5000`;
 
-        request({
-            url: url,
-            encoding: null
-        },
-        (err, resp, buffer) => {
-            if(err){
+        const url = await fullUrl+"/uploads/"+req.query.filename;
+        await res.send(url)
+        
 
-                console.log('=>>>>>>>>>>',err);
-            }
-            res.set("Content-Type", "image/jpeg");
-            res.send(resp.body)
-        });
+        // console.log(url);
+        // await res.send(url)
+      
+        // await request({
+            
+        //     url: url,
+        //     encoding: null
+        // },
+       
+        // async (err, resp, buffer) => {
+         
+        //     if(err){
+
+        //         console.log('=>>>>>>>>>>',err);
+        //     }
+        //     await res.set("Content-Type", "image/jpeg");
+        //     await res.send(resp.body)
+        // });
             
     } catch (error) {
 
@@ -268,6 +341,7 @@ app.get('/api/getImageFestival', async (req,res)=> {
     }
 
 });
+
 
 
 app.post('/api/uploadFile', upload.single('images'), async (req, res) => {
