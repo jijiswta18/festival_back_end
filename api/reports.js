@@ -51,6 +51,28 @@ router.route('/export_ffuagvylst/:id')
                 "status": 200,
                 "data": results
             }
+
+        
+            return res.json(result)
+        })
+    })
+router.route('/getNameFestival/:id')
+    .get(auth, (req, res, next) => { 
+
+        // แสดงข้อมูลทั้งหมด
+        const sql = "SELECT name as name_festival FROM list_festival  WHERE id = " +req.params.id
+        
+        db.query(sql, (error,results,fields)=>{
+
+            if (error) return res.status(500).json({
+                "status": 500,
+                "message": "Internal Server Error" // error.sqlMessage
+            })
+
+            const result = {
+                "status": 200,
+                "data": results
+            }
         
             return res.json(result)
         })

@@ -14,6 +14,8 @@ const ldap          = require('ldapjs');
 const fs            = require('fs');
 const request       = require('request');
 const path          = require('path');
+// const Buffer        = require('buffer');
+const { Buffer } = require("node:buffer");
 
 
 
@@ -48,7 +50,6 @@ client.on('error', () => {
     // this will be your ECONNRESET message
 })
 
-
 var storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, 'public/uploads');
@@ -57,6 +58,13 @@ var storage = multer.diskStorage({
     filename: function (req, file, cb) {
         let newFileName         =   req.body.image_name
        cb(null, newFileName);
+    },
+    limits: {
+        fileSize: 100000
+    },
+    onFileSizeLimit: function (file) {
+        console.log('Failed: ' + file.originalname + ' is limited')
+        fs.unlink(file.path)
     }
 });
 
@@ -65,6 +73,18 @@ var upload = multer({ storage: storage });
 moment.locale('th');
 let date = moment().format('YYYY-MM-DD HH:mm:ss');
 
+
+
+
+app.post('/api/uploadImage',upload.single('images'),(req,res) => {
+    res.send(req.files);
+})
+app.post('/api/uploadBg',upload.single('images'),(req,res) => {
+    res.send(req.files);
+})
+app.post('/api/uploadBtn',upload.single('images'),(req,res) => {
+    res.send(req.files);
+})
 
 app.get('/api/',(req,res)=>{
     res.send('Hello World!');
@@ -303,37 +323,22 @@ app.post('/api/login', async (req, res) =>{
 
 // });
 
-app.get('/api/getImageFestival', async (req,res)=> { 
 
-    
+app.get('/api/getImageFestival', async (req,res)=> { 
 
     try {
 
-        const fullUrl = await `${req.protocol}://${req.hostname}:5000`;
+        const fullUrl           = await `${req.protocol}://${req.hostname}:5000`;
+        const url               = await fullUrl+"/uploads/"+req.query.filename;
+        const imageUrl          = await url;
+        const imageUrlData      = await fetch(imageUrl);
+        const buffer            = await imageUrlData.arrayBuffer();
+        const stringifiedBuffer = await Buffer.from(buffer).toString('base64');
+        const contentType       = await imageUrlData.headers.get('content-type');
+        const imageBas64        = await `data:image/${contentType};base64,${stringifiedBuffer}`;
 
-        const url = await fullUrl+"/uploads/"+req.query.filename;
-        await res.send(url)
-        
-
-        // console.log(url);
-        // await res.send(url)
-      
-        // await request({
-            
-        //     url: url,
-        //     encoding: null
-        // },
-       
-        // async (err, resp, buffer) => {
-         
-        //     if(err){
-
-        //         console.log('=>>>>>>>>>>',err);
-        //     }
-        //     await res.set("Content-Type", "image/jpeg");
-        //     await res.send(resp.body)
-        // });
-            
+        await res.send(imageBas64)
+              
     } catch (error) {
 
         console.log(error);
@@ -341,8 +346,24 @@ app.get('/api/getImageFestival', async (req,res)=> {
     }
 
 });
+// app.get('/api/getImageFestival', async (req,res)=> { 
+
+//     try {
+
+//         const fullUrl = await `${req.protocol}://${req.hostname}`;
+
+//         const url = await fullUrl+"/uploads/"+req.query.filename;
 
 
+//         await res.send(url)
+              
+//     } catch (error) {
+
+//         console.log(error);
+        
+//     }
+
+// });
 
 app.post('/api/uploadFile', upload.single('images'), async (req, res) => {
 
@@ -372,6 +393,7 @@ app.post('/api/createFestival', auth, async (req,res)=> {
 
         let data = await {
             "name"          : req.body.name,
+            "detail"        : req.body.detail,
             "color"         : req.body.color,
             "start_date"    : req.body.start_date,
             "end_date"      : req.body.end_date,
@@ -457,6 +479,7 @@ app.post('/api/updateFestival', auth, async (req,res)=> {
 
         let item = {
             "name"          : req.body.name,
+            "detail"        : req.body.detail,
             "file_name"     : req.body.file_name,
             "file_bg_name"  : req.body.file_bg_name,
             "file_btn_name" : req.body.file_btn_name,
@@ -582,11 +605,11 @@ app.post('/api/deleteFestival', auth, (req, res)=>{
 
 });
 
-app.get('/api/checkFestival', auth, (req,res)=> { 
+app.get('/api/checkFestival', (req,res)=> { 
 
     try {
 
-        const sql = 'SELECT id, start_date, end_date FROM list_festival WHERE status = 1 ';
+        const sql = 'SELECT id, start_date, end_date, name, detail  FROM list_festival WHERE status = 1 ';
 
         db.query(sql, function (err, results, fields) {
 
@@ -618,7 +641,7 @@ app.get('/api/checkFestival', auth, (req,res)=> {
 
 
 // festival
-app.post('/api/createFestivalSign', auth, async (req,res)=> {  
+app.post('/api/createFestivalSign', async (req,res)=> {  
 
     try {
 
@@ -631,6 +654,8 @@ app.post('/api/createFestivalSign', auth, async (req,res)=> {
             "device"        : req.body.device,
             "ip_user"       : req.headers['x-forwarded-for'],
         }
+
+        // console.log(item.ip);
     
         let sql = "INSERT INTO sign_festival SET ?"
     
@@ -665,6 +690,264 @@ app.post('/api/createFestivalSign', auth, async (req,res)=> {
     }
 
 });
+
+// reference festival
+app.get('/api/get/Festival', auth, (req,res) => {
+
+    try {
+        const sql = 'SELECT id, name FROM list_festival'
+
+        db.query(sql, function (err, results, fields) {
+
+            if (err) return res.status(500).json({
+                "status": 500,
+                "message": "Internal Server Error" // error.sqlMessage
+            })
+
+            const result = {
+                "status": 200,
+                "data": results
+            }
+
+            return res.json(result)
+
+        });
+
+    } catch (error) {
+        console.log(error);
+    }
+});
+
+app.get('/api/get/listReference', auth, (req,res) => {
+
+    try {
+        const sql = 'SELECT id, name, tag_festival  FROM reference_festival'
+
+        db.query(sql, function (err, results, fields) {
+
+            if (err) return res.status(500).json({
+                "status": 500,
+                "message": "Internal Server Error" // error.sqlMessage
+            })
+
+            const result = {
+                "status": 200,
+                "data": results
+            }
+
+            return res.json(result)
+
+        });
+
+    } catch (error) {
+        console.log(error);
+    }
+});
+
+
+app.post('/api/create/reference', async (req, res) => {
+    try {
+
+        let item = {
+            "name"          : req.body.name,
+            "tag_festival"  : req.body.tag_festival,
+            "create_by"     : req.body.user_id,
+            "create_date"   : date,
+            "modified_by"   : req.body.user_id,
+            "modified_date" : date
+        }
+
+        let sql = "INSERT INTO reference_festival SET ?"
+
+        db.query(sql, item, (error,results,fields) => {
+
+            console.log(error);
+
+            if (error) return res.status(500).json({
+                "status": 500,
+                "message": "Internal Server Error" // error.sqlMessage
+            })
+
+            console.log(results);
+
+            data = [{'id':results.insertId, ...item}]
+
+            console.log(data);
+            const result = {
+                "status": 200,
+                "data": data
+            }
+
+            return res.json(result)
+
+        })
+
+    } catch (error) {
+        console.log(error);
+    }
+});
+
+app.post('/api/edit/reference', async (req, res) => {
+    try {
+
+        let item = {
+            "name"          : req.body.name,
+            "tag_festival"  : req.body.tag_festival,
+            "modified_by"   : req.body.user_id,
+            "modified_date" : date
+        }
+
+        console.log(req.body);
+
+        let sql = "UPDATE reference_festival SET ? WHERE id = " +req.body.id
+
+        db.query(sql, item, (error,results,fields) => {
+
+            console.log(error);
+
+            if (error) return res.status(500).json({
+                "status": 500,
+                "message": "Internal Server Error" // error.sqlMessage
+            })
+
+            console.log(results);
+
+            const result = {
+                "status": 200,
+                "data": results
+            }
+
+            return res.json(result)
+
+        })
+
+    } catch (error) {
+        console.log(error);
+    }
+});
+app.post('/api/update/selectReference', async (req, res) => {
+    try {
+
+        let item = {
+            // "name"          : req.body.name,
+            "tag_festival"  : req.body.tag_festival,
+            "modified_by"   : req.body.user_id,
+            "modified_date" : date
+        }
+
+        let sql = "UPDATE reference_festival SET ? WHERE id = " +req.body.id
+
+        db.query(sql, item, (error,results,fields) => {
+
+            console.log(error);
+
+            if (error) return res.status(500).json({
+                "status": 500,
+                "message": "Internal Server Error" // error.sqlMessage
+            })
+
+            console.log(results);
+
+            const result = {
+                "status": 200,
+                "data": results
+            }
+
+            return res.json(result)
+
+        })
+
+    } catch (error) {
+        console.log(error);
+    }
+});
+
+app.get('/api/get/reference', auth, (req,res) => {
+    try {
+        const sql = 'SELECT id, tag_festival, name, create_date FROM reference_festival'
+
+        db.query(sql, function (err, results, fields) {
+
+            if (err) return res.status(500).json({
+                "status": 500,
+                "message": "Internal Server Error" // error.sqlMessage
+            })
+
+            const result = {
+                "status": 200,
+                "data": results
+            }
+
+            return res.json(result)
+
+        });
+    } catch (error) {
+        
+    }
+});
+
+
+app.get('/api/get/detailReference/:id', auth, (req,res) => {
+    try {
+
+        const sql = "SELECT id,  name, tag_festival FROM reference_festival  WHERE tag_festival LIKE " + `'%"${req.params.id}"%'`
+
+        db.query(sql, function (err, results, fields) {
+            
+            if (err) return res.status(500).json({
+                "status": 500,
+                "message": "Internal Server Error" // error.sqlMessage
+            })
+
+            const result = {
+                "status": 200,
+                "data": results
+            }
+
+            return res.json(result)
+
+        });
+    } catch (error) {
+        
+    }
+});
+
+
+app.post('/api/update/deleteReference', auth, (req,res) => {
+    
+    try {
+
+        
+        let item = {
+            "tag_festival"  : req.body.tag_festival,
+            "modified_by"   : req.body.user_id,
+            "modified_date" : date
+        }
+
+        let sql = "UPDATE reference_festival SET ? WHERE id = " +req.body.id
+
+        db.query(sql, item, (error,results,fields)=>{
+    
+            if (error) return res.status(500).json({
+                "status": 500,
+                "message": "Internal Server Error" // error.sqlMessage
+            })
+
+            const result = {
+                "status": 200,
+                "data": results
+            }
+         
+            return res.json(result)
+        })
+
+    } catch (error) {
+        console.log();
+    }
+  
+ 
+});
+
 
 // // user //
 app.post('/api/createUser', auth, async (req,res)=> { 

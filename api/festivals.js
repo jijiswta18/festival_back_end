@@ -35,7 +35,7 @@ router.route('/getFestival')
     })
 
 router.route('/getFestivalSign')
-    .get(auth, (req, res, next) => { 
+    .get((req, res, next) => { 
 
         // แสดงข้อมูลทั้งหมด
         const sql = 'SELECT * FROM list_festival WHERE status = 1 '
