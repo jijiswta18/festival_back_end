@@ -392,17 +392,18 @@ app.post('/api/createFestival', auth, async (req,res)=> {
     try {
 
         let data = await {
-            "name"          : req.body.name,
-            "detail"        : req.body.detail,
-            "color"         : req.body.color,
-            "start_date"    : req.body.start_date,
-            "end_date"      : req.body.end_date,
-            "status"        : req.body.status,
-            "state"         : 1,
-            "create_by"     : req.body.user_id,
-            "create_date"   : date,
-            "modified_by"   : req.body.user_id,
-            "modified_date" : date
+            "name"              : req.body.name,
+            "detail"            : req.body.detail,
+            "color"             : req.body.color,
+            "start_date"        : req.body.start_date,
+            "end_date"          : req.body.end_date,
+            "status"            : req.body.status,
+            "state"             : 1,
+            "status_reference"  : req.body.status_reference,
+            "create_by"         : req.body.user_id,
+            "create_date"       : date,
+            "modified_by"       : req.body.user_id,
+            "modified_date"     : date
         }
 
     
@@ -569,6 +570,49 @@ app.post('/api/updateFestivalStatus', auth, async (req,res)=> {
 
 });
 
+app.post('/api/updateReferenceStatus', auth, async (req,res)=> { 
+
+    try {
+        let item = {
+            "status_reference"  : req.body.status_reference,
+            "modified_by"       : req.body.user_id,
+            "modified_date"     : date
+        }
+    
+        let sql = "UPDATE list_festival SET ? WHERE id = ?"
+        
+        db.query(sql, [item, req.body.fid], (error,results,fields)=>{
+    
+            if (error) return res.status(500).json({
+                "status": 500,
+                "message": "Internal Server Error" // error.sqlMessage
+            })
+    
+    
+            // if(req.body.status == 1){
+                
+            //     sql = "UPDATE list_festival SET status = 0  WHERE id != "+req.body.fid
+    
+            //     db.query(sql, (error,results,fields) => {
+                    
+            //     })
+    
+            // }
+            // user = [{'id':results.insertId, ...user}]
+            const result = {
+                "status": 200,
+                "data": results
+            }
+    
+            return res.json(result)
+        })
+    
+    } catch (error) {
+        console.log(error);
+    }
+
+});
+
 app.post('/api/deleteFestival', auth, (req, res)=>{
 
     try {
@@ -646,13 +690,15 @@ app.post('/api/createFestivalSign', async (req,res)=> {
     try {
 
         let item = {
-            "id_festival"   : req.body.id_festival,
-            "name"          : req.body.name,
-            "lastname"      : req.body.lastname,
-            "regis_date"    : req.body.regis_date,
-            "browser"       : req.body.browser,
-            "device"        : req.body.device,
-            "ip_user"       : req.headers['x-forwarded-for'],
+            "id_festival"       : req.body.id_festival,
+            "name"              : req.body.name,
+            "lastname"          : req.body.lastname,
+            "regis_date"        : req.body.regis_date,
+            "browser"           : req.body.browser,
+            "device"            : req.body.device,
+            "ip_user"           : req.headers['x-forwarded-for'],
+            "id_reference"      : req.body.id_reference,
+            "name_reference"    : req.body.name_reference,
         }
 
         // console.log(item.ip);
@@ -887,7 +933,7 @@ app.get('/api/get/reference', auth, (req,res) => {
 });
 
 
-app.get('/api/get/detailReference/:id', auth, (req,res) => {
+app.get('/api/get/detailReference/:id', (req,res) => {
     try {
 
         const sql = "SELECT id,  name, tag_festival FROM reference_festival  WHERE tag_festival LIKE " + `'%"${req.params.id}"%'`
