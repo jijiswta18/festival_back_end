@@ -36,12 +36,13 @@ router.route('/getFestival')
 
 router.route('/getFestivalSign')
     .get((req, res, next) => { 
-
+       
         // แสดงข้อมูลทั้งหมด
-        const sql = 'SELECT * FROM list_festival WHERE status = 1 '
+        const sql = 'SELECT * FROM list_festival WHERE status = 1';
 
         db.query(sql, function (err, results, fields) {
-    
+
+            
             if (err) return res.status(500).json({
                 "status": 500,
                 "message": "Internal Server Error" // error.sqlMessage
@@ -51,10 +52,13 @@ router.route('/getFestivalSign')
                 "status": 200,
                 "data"  : results, 
             }
+
+            console.log(result);
     
-            return res.json(result)
+              return res.json(result)
     
         })
+    
     })
 
 router.route('/getFestivalPreview/:id')

@@ -741,7 +741,7 @@ app.post('/api/createFestivalSign', async (req,res)=> {
 app.get('/api/get/Festival', auth, (req,res) => {
 
     try {
-        const sql = 'SELECT id, name FROM list_festival'
+        const sql = 'SELECT id, name FROM list_festival WHERE state = 1'
 
         db.query(sql, function (err, results, fields) {
 
@@ -791,7 +791,7 @@ app.get('/api/get/listReference', auth, (req,res) => {
 });
 
 
-app.post('/api/create/reference', async (req, res) => {
+app.post('/api/create/reference', auth, async (req, res) => {
     try {
 
         let item = {
@@ -833,7 +833,7 @@ app.post('/api/create/reference', async (req, res) => {
     }
 });
 
-app.post('/api/edit/reference', async (req, res) => {
+app.post('/api/edit/reference', auth, async (req, res) => {
     try {
 
         let item = {
@@ -908,9 +908,10 @@ app.post('/api/update/selectReference', async (req, res) => {
     }
 });
 
-app.get('/api/get/reference', auth, (req,res) => {
+app.get('/api/get/reference', auth, async (req,res) => {
+
     try {
-        const sql = 'SELECT id, tag_festival, name, create_date FROM reference_festival'
+        const sql = 'SELECT id, tag_festival, name, create_date FROM reference_festival' 
 
         db.query(sql, function (err, results, fields) {
 
